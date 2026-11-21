@@ -1,5 +1,5 @@
 /**
- * dataLoader.js — Đọc, kiểm tra và chuẩn hóa danh sách đăng ký thi (người A).
+ * dataLoader.js — Đọc, kiểm tra và chuẩn hóa danh sách đăng ký thi.
  *
  * Hai nguồn dữ liệu (nhập trực tiếp trên bảng, file Excel .xlsx) đều đi qua CÙNG một
  * quy trình kiểm tra (checkRows), nên quy tắc dữ liệu chỉ viết ở một chỗ.
