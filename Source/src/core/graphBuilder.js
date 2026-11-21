@@ -1,5 +1,5 @@
 /**
- * graphBuilder.js — Dựng đồ thị xung đột và các hàm tiện ích trên đồ thị (người A).
+ * graphBuilder.js — Dựng đồ thị xung đột và các hàm tiện ích trên đồ thị.
  *
  * Mô hình: mỗi môn là một đỉnh; hai môn có ít nhất một sinh viên học chung thì nối một cạnh.
  * Đồ thị được biểu diễn bằng danh sách kề: Map<mãMôn, Set<mãMôn kề>>.
