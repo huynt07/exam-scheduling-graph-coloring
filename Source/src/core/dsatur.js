@@ -1,5 +1,5 @@
 /**
- * dsatur.js — Thuật toán tô màu DSATUR (Brélaz, 1979) (người C).
+ * dsatur.js — Thuật toán tô màu DSATUR (Brélaz, 1979).
  *
  * Mỗi lượt chọn đỉnh chưa tô có độ bão hòa cao nhất (số màu khác nhau ở các đỉnh kề đã tô);
  * hòa thì chọn đỉnh bậc lớn hơn, vẫn hòa thì chọn mã môn nhỏ hơn; rồi gán màu nhỏ nhất hợp lệ.
