@@ -1,5 +1,5 @@
 /**
- * lookup.js — Tra cứu lịch thi theo mã sinh viên (người C).
+ * lookup.js — Tra cứu lịch thi theo mã sinh viên.
  *
  * File trong core/: không dùng document, window.
  */
