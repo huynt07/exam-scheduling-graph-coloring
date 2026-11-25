@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Xếp lịch thi bằng tô màu đồ thị</title>
+  <!-- Bootstrap CSS và css/style.css được nạp trong src/ui/main.js để Vite gộp vào file Release -->
+</head>
+<body>
+  <header class="app-header">
+    <div class="container">
+      <h1 class="h3 mb-1">Xếp lịch thi bằng tô màu đồ thị</h1>
+      <p class="mb-0 small">Môn thi = đỉnh · có sinh viên học chung = cạnh · ca thi = màu. Hai thuật toán: Welsh-Powell và DSATUR.</p>
+    </div>
+  </header>
+
+  <main class="container my-4">
+    <!-- Thông báo lỗi/thành công chung của trang -->
+    <div id="messageBox" aria-live="polite"></div>
+
+    <!-- BƯỚC 1: Dữ liệu đăng ký thi -->
+    <section class="card mb-4" id="sectionData">
+      <div class="card-header"><strong>Bước 1.</strong> Dữ liệu đăng ký thi</div>
+      <div class="card-body">
+        <ul class="nav nav-pills mb-3" id="inputTabs" role="tablist">
+          <li class="nav-item"><button type="button" class="nav-link active" data-mode="manual" id="tabManual">Nhập trực tiếp</button></li>
+          <li class="nav-item"><button type="button" class="nav-link" data-mode="file" id="tabFile">Tải file Excel (.xlsx)</button></li>
+        </ul>
+
+        <!-- (a) Nhập trực tiếp: bảng trống khi mở trang -->
+        <div id="paneManual">
+          <p class="text-muted small mb-2">Mỗi dòng là một lượt đăng ký: một sinh viên đăng ký một môn. Có thể dán nhiều dòng từ Excel (hai cột) vào ô đầu tiên.</p>
+          <div class="table-responsive input-table-wrap">
+            <table class="table table-sm table-bordered align-middle mb-2" id="inputTable">
+              <thead class="table-light">
+                <tr><th style="width:3.5rem">#</th><th>studentId (mã sinh viên)</th><th>courseId (mã môn)</th><th style="width:3rem"></th></tr>
+              </thead>
+              <tbody id="inputBody"></tbody>
+            </table>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddRow">+ Thêm dòng</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnClearRows">Xóa hết dòng</button>
+            <button type="button" class="btn btn-success btn-sm" id="btnUseManual">Kiểm tra dữ liệu</button>
+          </div>
+        </div>
+
+        <!-- (b) Tải file -->
+        <div id="paneFile" hidden>
+          <p class="text-muted small mb-2">File Excel <code>.xlsx</code>, sheet đầu tiên, dòng đầu là tiêu đề với hai cột <code>studentId</code> và <code>courseId</code> (nhận cả <code>MSSV</code>, <code>Mã SV</code>, <code>Mã môn</code>).</p>
+          <input type="file" class="form-control" id="fileInput" accept=".xlsx">
+          <div class="small text-muted mt-2" id="fileName"></div>
+        </div>
+
+        <div id="dataSummary" class="mt-3" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- BƯỚC 2: Cấu hình lịch thi -->
+    <section class="card mb-4" id="sectionConfig">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><strong>Bước 2.</strong> Cấu hình lịch thi</span>
+        <span class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="btnSaveConfig">Lưu cấu hình</button>
+          <label class="btn btn-outline-secondary btn-sm mb-0" for="configFile">Nạp cấu hình</label>
+          <input type="file" id="configFile" accept=".json,application/json" hidden>
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" for="cfgStartDate">Ngày bắt đầu thi</label>
+            <input type="date" class="form-control" id="cfgStartDate">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="cfgSlotsPerDay">Số ca mỗi ngày</label>
+            <input type="number" min="1" max="8" class="form-control" id="cfgSlotsPerDay" value="3">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="cfgMaxPerDay">Số môn tối đa / sinh viên / ngày</label>
+            <input type="number" min="1" class="form-control" id="cfgMaxPerDay" value="2" placeholder="Để trống = không giới hạn">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Giờ bắt đầu từng ca</label>
+            <div class="d-flex flex-wrap gap-2" id="slotTimes"></div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Phòng thi</label>
+            <table class="table table-sm table-bordered align-middle mb-2">
+              <thead class="table-light"><tr><th>Mã phòng</th><th>Sức chứa</th><th style="width:3rem"></th></tr></thead>
+              <tbody id="roomBody"></tbody>
+            </table>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddRoom">+ Thêm phòng</button>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="cfgHolidays">Ngày nghỉ thêm (mỗi dòng một ngày, dạng YYYY-MM-DD)</label>
+            <textarea class="form-control mb-2" id="cfgHolidays" rows="3" placeholder="2026-12-25"></textarea>
+            <div class="form-check"><input class="form-check-input" type="checkbox" id="cfgSkipWeekends" checked><label class="form-check-label" for="cfgSkipWeekends">Bỏ thứ Bảy, Chủ nhật</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" id="cfgOptimize" checked><label class="form-check-label" for="cfgOptimize">Sắp lại thứ tự ca để giảm số sinh viên thi quá nhiều môn trong ngày</label></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BƯỚC 3: Thuật toán và nút chạy -->
+    <section class="card mb-4" id="sectionRun">
+      <div class="card-header"><strong>Bước 3.</strong> Chọn thuật toán và chạy</div>
+      <div class="card-body d-flex flex-wrap align-items-center gap-4">
+        <div id="algoChoice">
+          <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="algo" id="algoBoth" value="both" checked><label class="form-check-label" for="algoBoth">Chạy cả hai (có so sánh)</label></div>
+          <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="algo" id="algoWP" value="welshPowell"><label class="form-check-label" for="algoWP">Welsh-Powell</label></div>
+          <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="algo" id="algoDS" value="dsatur"><label class="form-check-label" for="algoDS">DSATUR</label></div>
+        </div>
+        <button type="button" class="btn btn-primary btn-lg" id="btnRun">Chạy và xếp lịch thi</button>
+        <span class="badge text-bg-warning" id="staleBadge" hidden>Dữ liệu đã thay đổi, hãy chạy lại</span>
+      </div>
+    </section>
+
+    <!-- KẾT QUẢ: ẩn cho tới khi người dùng bấm chạy thành công -->
+    <div id="results" hidden>
+      <section class="card mb-4">
+        <div class="card-header"><strong>Đồ thị xung đột đã tô màu</strong> <span class="text-muted small" id="graphInfo"></span></div>
+        <div class="card-body">
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <label class="small mb-0" for="viewAlgo">Xem kết quả của:</label>
+            <select class="form-select form-select-sm w-auto" id="viewAlgo"></select>
+            <span class="vr mx-1"></span>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnPrev">« Bước trước</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnNext">Bước tiếp »</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnReplay">Chạy lại</button>
+            <button type="button" class="btn btn-outline-dark btn-sm" id="btnShowAll">Hiện toàn bộ</button>
+          </div>
+          <div class="step-info mb-2" id="stepInfo" aria-live="polite"></div>
+          <canvas id="graphCanvas" class="graph-canvas" role="img" aria-label="Đồ thị xung đột các môn thi, mỗi đỉnh tô theo ca thi"></canvas>
+          <div class="legend mt-2" id="legend"></div>
+        </div>
+      </section>
+
+      <section class="card mb-4" id="sectionCompare">
+        <div class="card-header"><strong>So sánh hai thuật toán</strong></div>
+        <div class="card-body" id="comparePanel"></div>
+      </section>
+
+      <section class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Lịch thi</strong>
+          <span class="d-flex gap-2">
+            <button type="button" class="btn btn-success btn-sm" id="btnExportXlsx">Tải Excel</button>
+            <button type="button" class="btn btn-outline-success btn-sm" id="btnExportCsv">Tải CSV</button>
+          </span>
+        </div>
+        <div class="card-body">
+          <div id="checkPanel" class="mb-3"></div>
+          <div id="warningPanel"></div>
+          <div class="table-responsive schedule-wrap" id="schedulePanel"></div>
+        </div>
+      </section>
+
+      <section class="card mb-4">
+        <div class="card-header"><strong>Thống kê ca thi</strong></div>
+        <div class="card-body" id="slotPanel"></div>
+      </section>
+
+      <section class="card mb-4">
+        <div class="card-header"><strong>Tra cứu lịch thi theo mã sinh viên</strong></div>
+        <div class="card-body">
+          <form class="d-flex gap-2 mb-3" id="lookupForm" autocomplete="off">
+            <input type="text" class="form-control" id="lookupInput" placeholder="Nhập mã sinh viên" aria-label="Mã sinh viên">
+            <button type="submit" class="btn btn-primary text-nowrap">Tra cứu</button>
+          </form>
+          <div id="lookupResult" aria-live="polite"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="container small text-muted pb-4">Chương trình chạy hoàn toàn trên trình duyệt, dữ liệu không rời khỏi máy của bạn.</footer>
+
+  <script type="module" src="/src/ui/main.js"></script>
+</body>
+</html>
